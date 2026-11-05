@@ -94,6 +94,7 @@ nmcli con show                       # saved networks
 | Screen never changes, log says `No such file … spidev0.0` | SPI not active yet: `sudo reboot`. |
 | Log: `GPIO busy` / `lgpio` errors | Another program uses the display (the old cron job from `raspberry-calendar`?). Remove it: `crontab -e`, `sudo crontab -e`. |
 | Image is faint or has a red tint everywhere | Check the ribbon cable is fully in; try the other *Display Config* switch position. |
+| New router, or Wi-Fi name/password changed | Wait: after 30 minutes without Wi-Fi the calendar shows the setup screen by itself (10 minutes if you unplug and replug it). Scan the code and pick the new network. If the old network comes back first, the calendar returns to it on its own. |
 | Setup Wi-Fi doesn't show up on the phone | Wait a minute after the Welcome screen appears. The Zero 2 W hotspot is 2.4 GHz only. |
 | "Google sign-in isn't set up" page | `secrets/google_client.json` missing. See GOOGLE_SETUP.md, then deploy again. |
 | After sign-in the phone shows "can't reach page" | The phone must be on the same Wi-Fi as the calendar (not mobile data / VPN). |

@@ -38,6 +38,8 @@ OFFLINE_AFTER_SECONDS = 3600    # show "Offline" footer after an hour of failed 
 BOOT_RETRY_SECONDS = 30         # retry sync this often until the first one since boot works
 CLOCK_WAIT_SECONDS = 120        # wait this long for NTP before trusting the clock anyway (NTP blocked)
 NO_WIFI_SETUP_SECONDS = 600     # not on any Wi-Fi this long after boot -> setup mode (router replaced?)
+NO_WIFI_RUNNING_SECONDS = 1800  # same while running normally; longer, so a router reboot is just "Offline"
+WIFI_CHECK_SECONDS = 300        # how often to check for Wi-Fi in run mode (cheap: no panel refresh)
 
 
 class PairCode:
@@ -192,7 +194,7 @@ class App:
         if self.mode != RUN:
             return 30
         now = datetime.now(self.tz)
-        waits = [60 * 60, self._sync_due_in()]
+        waits = [WIFI_CHECK_SECONDS, self._sync_due_in()]
         midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), tzinfo=now.tzinfo)
         waits.append((midnight - now).total_seconds() + 5)
         if self._pair_until:
@@ -216,26 +218,29 @@ class App:
                 self._enter_link_or_run()
         elif self.mode == RUN:
             if self._wifi_gone_too_long():
-                log.warning("no Wi-Fi for %d min since start: switching to Wi-Fi setup", NO_WIFI_SETUP_SECONDS // 60)
+                log.warning("no Wi-Fi for %d min: switching to Wi-Fi setup", self._no_wifi_limit() // 60)
                 self._enter_setup()
                 return
             if self._pair_until and time.time() >= self._pair_until:
                 self._pair_until = 0
             self.refresh()
 
+    def _no_wifi_limit(self) -> int:
+        return NO_WIFI_RUNNING_SECONDS if self._synced_since_boot else NO_WIFI_SETUP_SECONDS
+
     def _wifi_gone_too_long(self) -> bool:
-        """Before the first successful sync since boot, being on NO Wi-Fi at all for a while means
-        the home network may be gone for good (new router, new password): then the only way to
-        fix it is the setup hotspot. On Wi-Fi without internet, keep waiting."""
-        if self._synced_since_boot or self.demo:
-            self._no_wifi_since = None
-            return False
-        if self.net.current_ssid():
+        """Being on NO Wi-Fi at all for a while means the home network may be gone for good
+        (new router, new password). The phone can't reach the settings page then, so the only
+        way to fix it is the setup hotspot. Setup mode retries the saved network every
+        10 minutes, so if it was only a long router outage the calendar comes back by itself.
+        On Wi-Fi without internet, keep waiting: that is the provider's problem, not ours."""
+        if self.demo or self.net.current_ssid():
             self._no_wifi_since = None
             return False
         if self._no_wifi_since is None:
             self._no_wifi_since = time.monotonic()
-        return time.monotonic() - self._no_wifi_since >= NO_WIFI_SETUP_SECONDS
+            log.info("not connected to any Wi-Fi")
+        return time.monotonic() - self._no_wifi_since >= self._no_wifi_limit()
 
     def _clock_ready(self) -> bool:
         if not self._clock_ok:

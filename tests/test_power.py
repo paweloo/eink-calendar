@@ -145,6 +145,39 @@ def test_no_wifi_for_ten_minutes_opens_setup(make_device):
     assert dev.mode == "setup" and net.hotspot
 
 
+def test_router_replaced_while_running_opens_setup_after_30_min(make_device):
+    net, src = HomeNetwork(wifi=True, internet=True), Source()
+    dev = make_device(net, src)
+    dev._boot()
+    assert dev.mode == "run" and dev._synced_since_boot
+    assert dev._seconds_until_tick() <= app_mod.WIFI_CHECK_SECONDS  # checks Wi-Fi even with a 60-min sync
+
+    net.wifi = net.internet = False                    # new router, different name/password
+    src.ok = False
+    dev._tick()
+    dev._no_wifi_since -= app_mod.NO_WIFI_SETUP_SECONDS  # 10 min is not enough while running…
+    dev._tick()
+    assert dev.mode == "run" and not net.hotspot
+    dev._no_wifi_since -= app_mod.NO_WIFI_RUNNING_SECONDS  # …30 min is
+    dev._tick()
+    assert dev.mode == "setup" and net.hotspot
+
+
+def test_wifi_back_within_30_min_stays_on_calendar(make_device):
+    net, src = HomeNetwork(wifi=True, internet=True), Source()
+    dev = make_device(net, src)
+    dev._boot()
+    net.wifi = False
+    dev._tick()
+    dev._no_wifi_since -= app_mod.NO_WIFI_RUNNING_SECONDS - 60
+    net.wifi = True                                    # router finished rebooting
+    dev._tick()
+    assert dev._no_wifi_since is None
+    net.wifi = False
+    dev._tick()                                        # the timer starts over
+    assert dev.mode == "run"
+
+
 def test_not_linked_and_offline_still_opens_setup(make_device, tmp_path):
     net = HomeNetwork(wifi=False)
     dev = make_device(net)
