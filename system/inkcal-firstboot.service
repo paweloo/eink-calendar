@@ -1,0 +1,15 @@
+[Unit]
+Description=E-ink calendar: give this unit its own identity (runs once per SD card)
+ConditionPathExists=!/var/lib/inkcal/device.json
+After=local-fs.target
+Before=inkcal.service ssh.service avahi-daemon.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/inkcal
+Environment=INKCAL_DATA=/var/lib/inkcal
+ExecStart=/usr/bin/python3 -m inkcal firstboot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

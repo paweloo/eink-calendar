@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Settings · {{ device_name }}{% endblock %}
+{% block status %}
+<span class="status">{% if last_error %}<i style="background:#d7261e"></i>Sync problem{% else %}<i></i>Online{% endif %}</span>
+{% endblock %}
+{% block body %}
+<h1>Settings</h1>
+{% if saved %}<p class="notice ok" role="status">Saved. The screen updates in about 20 seconds.</p>{% endif %}
+{% if error %}<p class="notice err" role="alert">{{ error }}</p>{% endif %}
+{% if last_error %}<p class="notice err">Last sync failed: {{ last_error }}</p>{% endif %}
+
+<div class="preview"><img src="{{ url_for('screen') }}" alt="What the calendar shows now" width="800" height="480"></div>
+
+<div class="card">
+  <div class="stack" style="gap:2px">
+    <strong style="font-size:14px">{% if last_sync %}Last synced {{ last_sync }}{% else %}Not synced yet{% endif %}</strong>
+    <span class="small">Every {{ s.refresh_minutes }} minutes</span>
+  </div>
+  <form method="post" action="{{ url_for('action', name='sync') }}"><button class="btn dark" type="submit">Sync now</button></form>
+</div>
+
+<form method="post">
+  <section class="group" style="border-top:0;padding-top:0">
+    <h2>Display</h2>
+    <fieldset style="border:0;margin:0;padding:0">
+      <legend class="title" style="font-size:14px;font-weight:600;margin-bottom:8px">Default view</legend>
+      <div class="seg">
+        {% for v in views %}<label><input type="radio" name="view" value="{{ v }}" {% if s.view == v %}checked{% endif %}>{{ v|capitalize }}</label>{% endfor %}
+      </div>
+    </fieldset>
+    <div class="field" style="margin-top:4px">
+      <label class="title" for="theme">Theme</label>
+      <select id="theme" name="theme">
+        {% for k, label in themes.items() %}<option value="{{ k }}" {% if s.theme == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field" style="margin-top:4px">
+      <label class="title" for="week_start">Week starts on</label>
+      <select id="week_start" name="week_start">
+        <option value="0" {% if s.week_start == 0 %}selected{% endif %}>Monday</option>
+        <option value="6" {% if s.week_start == 6 %}selected{% endif %}>Sunday</option>
+      </select>
+    </div>
+    <label class="row">24-hour clock <input type="checkbox" name="clock_24h" {% if s.clock_24h %}checked{% endif %}></label>
+  </section>
+
+  {% if cals %}
+  <section class="group">
+    <h2>Calendars to show</h2>
+    {% for c in cals %}
+    <label class="check"><input type="checkbox" name="cal_{{ c.id }}" {% if c.on %}checked{% endif %}> {{ c.name }}</label>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="group">
+    <h2>Sync</h2>
+    <div class="field" style="margin-top:0">
+      <label class="title" for="refresh">Check for changes</label>
+      <select id="refresh" name="refresh_minutes">
+        {% for m in refresh %}<option value="{{ m }}" {% if s.refresh_minutes == m %}selected{% endif %}>{% if m < 60 %}Every {{ m }} minutes{% else %}Every hour{% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <p class="small" style="margin:0">The screen only redraws when your events change.</p>
+    <label class="row">Don’t redraw overnight <input type="checkbox" name="quiet_enabled" {% if s.quiet_enabled %}checked{% endif %}></label>
+    <div class="grid2">
+      <div class="field" style="margin-top:0"><label class="title" for="qs">From</label><input id="qs" type="time" name="quiet_start" value="{{ s.quiet_start }}"></div>
+      <div class="field" style="margin-top:0"><label class="title" for="qe">Until</label><input id="qe" type="time" name="quiet_end" value="{{ s.quiet_end }}"></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>Device</h2>
+    <div class="field" style="margin-top:0">
+      <label class="title" for="devname">Device name</label>
+      <input id="devname" type="text" name="device_name" value="{{ s.device_name }}" maxlength="40">
+    </div>
+  </section>
+
+  <button class="btn mt-l" type="submit">Save changes</button>
+</form>
+
+<section class="group mt-l">
+  <h2>Google account</h2>
+  <span style="font-size:16px;font-weight:600">{{ email or 'Not linked' }}</span>
+  <div class="grid2">
+    <form method="post" action="{{ url_for('action', name='switch') }}"><button class="btn ghost" type="submit">Switch account</button></form>
+    <form method="post" action="{{ url_for('action', name='signout') }}"><button class="btn ghost" type="submit">Sign out</button></form>
+  </div>
+</section>
+
+<section class="group" id="device">
+  <h2>Network &amp; device</h2>
+  <div class="row"><span>Wi-Fi: <strong>{{ wifi or 'unknown' }}</strong></span>
+    <form method="post" action="{{ url_for('action', name='wifi') }}" onsubmit="return confirm('The calendar will leave this network and start its setup Wi-Fi. Continue?')"><button class="btn ghost" type="submit" style="width:auto">Change</button></form>
+  </div>
+  <div class="meta"><span>Software {{ version }}</span><span>{{ dev.mdns_host }}</span></div>
+  <div class="grid2">
+    <form method="post" action="{{ url_for('action', name='restart') }}"><button class="btn ghost" type="submit">Restart</button></form>
+    <form method="post" action="{{ url_for('action', name='logout_browsers') }}"><button class="btn ghost" type="submit">Unpair phones</button></form>
+  </div>
+  <details>
+    <summary>Factory reset…</summary>
+    <form method="post" action="{{ url_for('action', name='reset') }}" class="stack">
+      <p class="small" style="margin:0">Erases the Google sign-in, Wi-Fi and all settings. Type RESET to confirm.</p>
+      <label class="title" for="confirm">Confirmation</label>
+      <input id="confirm" type="text" name="confirm" autocomplete="off" autocapitalize="characters">
+      <button class="btn danger" type="submit">Factory reset</button>
+    </form>
+  </details>
+</section>
+{% endblock %}

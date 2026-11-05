@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}All set{% endblock %}
+{% block body %}
+<h1>You’re all set.</h1>
+<p class="lead">{% if email %}Linked to <strong>{{ email }}</strong>. {% endif %}Your events appear on the calendar in a moment.</p>
+<a class="btn mt" href="{{ url_for('settings') }}">Open settings</a>
+<p class="small center">Bookmark this page to change settings later.</p>
+{% endblock %}

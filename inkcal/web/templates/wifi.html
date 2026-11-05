@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Choose Wi-Fi{% endblock %}
+{% block brand %}Calendar setup{% endblock %}
+{% block status %}<span class="small" style="font-weight:600">Step 1 of 2</span>{% endblock %}
+{% block body %}
+<div class="progress" aria-hidden="true"><span style="width:50%"></span></div>
+<h1>Choose your Wi-Fi</h1>
+<p class="lead">The calendar will use this network to sync your events.</p>
+{% if error %}<p class="notice err" role="alert">{{ error }}</p>{% endif %}
+
+<form method="post" class="mt">
+  <fieldset style="border:0;margin:0;padding:0" class="stack">
+    <legend><h2 style="margin-bottom:8px">Networks nearby</h2></legend>
+    {% for n in networks %}
+    <label class="net">
+      <input type="radio" name="ssid" value="{{ n.ssid }}" {% if n.ssid == selected %}checked{% endif %}>
+      <span class="name">{{ n.ssid }}</span>
+      {% if n.secure %}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" role="img" aria-label="Password protected"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>{% endif %}
+      {% set lvl = (n.signal // 25) + 1 if n.signal < 100 else 4 %}
+      <span class="bars" role="img" aria-label="Signal {{ lvl }} of 4">
+        {% for i in range(1, 5) %}<span class="{{ '' if i <= lvl else 'off' }}" style="height:{{ 3 + i * 3 }}px"></span>{% endfor %}
+      </span>
+    </label>
+    {% else %}
+    <p class="small">No networks found. Type the name of your network below.</p>
+    {% endfor %}
+    <details>
+      <summary>Other network…</summary>
+      <div class="field" style="margin-top:4px">
+        <label class="title" for="other">Network name</label>
+        <input id="other" type="text" name="other_ssid" autocomplete="off" autocapitalize="none">
+      </div>
+    </details>
+  </fieldset>
+
+  <div class="field">
+    <label class="title" for="pw">Password</label>
+    <input id="pw" type="password" name="password" autocomplete="off" autocapitalize="none">
+    <label class="check"><input type="checkbox" onclick="document.getElementById('pw').type = this.checked ? 'text' : 'password'"> Show password</label>
+  </div>
+
+  <button class="btn mt" type="submit">Connect</button>
+  <p class="small center">Your phone will leave the setup network. Watch the calendar’s screen for the next step.</p>
+</form>
+{% endblock %}

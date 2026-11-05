@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Pair this phone{% endblock %}
+{% block body %}
+<h1>Pair this phone</h1>
+<p class="lead">To change settings, enter the code shown on the calendar. You only need to do this once on each phone or computer.</p>
+{% if error %}<p class="notice err" role="alert">{{ error }}</p>{% endif %}
+
+{% if mode == 'run' %}
+<form method="post" action="{{ url_for('pair_show') }}" class="mt">
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn dark" type="submit">{% if showing %}Show the code again{% else %}Show a code on the calendar{% endif %}</button>
+  <p class="small">The screen takes about 20 seconds to change.</p>
+</form>
+{% endif %}
+
+<form method="post">
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="field">
+    <label class="title" for="code">Code from the screen</label>
+    <input id="code" class="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+  </div>
+  <button class="btn mt" type="submit">Pair</button>
+</form>
+{% endblock %}

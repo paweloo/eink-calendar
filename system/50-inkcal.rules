@@ -1,0 +1,14 @@
+// Let the inkcal service manage Wi-Fi and reboot without being root.
+polkit.addRule(function (action, subject) {
+    if (subject.user !== "inkcal") {
+        return polkit.Result.NOT_HANDLED;
+    }
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") === 0) {
+        return polkit.Result.YES;
+    }
+    if (action.id === "org.freedesktop.login1.reboot" ||
+        action.id === "org.freedesktop.login1.reboot-multiple-sessions") {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NOT_HANDLED;
+});

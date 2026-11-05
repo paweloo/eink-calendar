@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Connecting{% endblock %}
+{% block brand %}Calendar setup{% endblock %}
+{% block body %}
+<h1>Connecting to {{ ssid }}…</h1>
+<div class="spinner" aria-hidden="true"></div>
+<p class="lead">You can close this page. Reconnect your phone to <strong>{{ ssid }}</strong>, then follow the steps on the calendar’s screen.</p>
+<p class="small">If the password was wrong, the setup Wi-Fi comes back in about a minute.</p>
+{% endblock %}
