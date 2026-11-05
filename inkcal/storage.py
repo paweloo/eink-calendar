@@ -5,6 +5,7 @@ Layout (on the Pi):
   /var/lib/inkcal/device.json      identity of this unit (created on first boot)
   /var/lib/inkcal/settings.json    user settings
   /var/lib/inkcal/token.json       Google tokens of the linked account
+  /var/lib/inkcal/events.json      last synced events, so a restart without internet can still draw them
 """
 from __future__ import annotations
 
@@ -32,6 +33,10 @@ class Paths:
     @property
     def token(self) -> Path:
         return self.data / "token.json"
+
+    @property
+    def events(self) -> Path:
+        return self.data / "events.json"
 
     @property
     def google_client(self) -> Path:

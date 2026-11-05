@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import socket
+import subprocess
 import uuid
 from pathlib import Path
 from typing import Dict, Optional
@@ -68,3 +69,19 @@ def local_ip() -> Optional[str]:
         return None
     finally:
         s.close()
+
+
+def clock_synced() -> bool:
+    """True once systemd-timesyncd has set the clock from the internet.
+
+    The Pi has no battery-backed clock: after a power cut it boots with the last saved time
+    (possibly days old) until NTP answers. Not a systemd machine (a Mac): always True.
+    """
+    try:
+        res = subprocess.run(["timedatectl", "show", "-p", "NTPSynchronized", "--value"],
+                             capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return True
+    if res.returncode != 0:
+        return True
+    return res.stdout.strip() == "yes"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from typing import Iterable, List
+from datetime import date, datetime, timedelta, tzinfo
+from typing import Any, Dict, Iterable, List
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,17 @@ class Event:
 
     def on(self, day: date) -> bool:
         return day in self.days()
+
+
+def event_to_dict(e: Event) -> Dict[str, Any]:
+    return {"title": e.title, "start": e.start.isoformat(), "end": e.end.isoformat(),
+            "all_day": e.all_day, "location": e.location, "calendar_id": e.calendar_id}
+
+
+def event_from_dict(d: Dict[str, Any], tz: tzinfo) -> Event:
+    return Event(title=d["title"], start=datetime.fromisoformat(d["start"]).astimezone(tz),
+                 end=datetime.fromisoformat(d["end"]).astimezone(tz), all_day=bool(d.get("all_day")),
+                 location=d.get("location", ""), calendar_id=d.get("calendar_id", ""))
 
 
 def sort_key(e: Event):

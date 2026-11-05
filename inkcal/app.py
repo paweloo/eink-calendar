@@ -19,14 +19,14 @@ import time
 from datetime import date, datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
-from .device import load_or_create_identity, local_ip
+from .device import clock_synced, load_or_create_identity, local_ip
 from .google import (AuthError, ConfigError, DemoCalendar, GoogleCalendar, OAuthClient,
                      TokenStore, revoke, zone)
-from .models import Event
+from .models import Event, event_from_dict, event_to_dict
 from .network import HOTSPOT_IP, NetworkError
 from .render import RenderContext, render_view, screens
 from .settings import Settings, in_quiet_hours, parse_hhmm
-from .storage import Paths
+from .storage import Paths, load_json, save_json
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +34,10 @@ SETUP, LINK, RUN = "setup", "link", "run"
 PAIR_SCREEN_SECONDS = 300
 SETUP_RETRY_SECONDS = 600       # with a saved network, retry it every 10 min while in setup
 OFFLINE_AFTER_SECONDS = 3600    # show "Offline" footer after an hour of failed syncs
+# After a restart (e.g. a power cut, often together with the router):
+BOOT_RETRY_SECONDS = 30         # retry sync this often until the first one since boot works
+CLOCK_WAIT_SECONDS = 120        # wait this long for NTP before trusting the clock anyway (NTP blocked)
+NO_WIFI_SETUP_SECONDS = 600     # not on any Wi-Fi this long after boot -> setup mode (router replaced?)
 
 
 class PairCode:
@@ -70,12 +74,19 @@ class PairCode:
 
 
 class App:
-    def __init__(self, paths: Paths, display, network, demo: bool = False, port: int = 80):
+    def __init__(self, paths: Paths, display, network, demo: bool = False, port: int = 80,
+                 clock_synced: Callable[[], bool] = clock_synced):
         self.paths = paths
         self.display = display
         self.net = network
         self.demo = demo
         self.port = port
+        self._clock_synced = clock_synced
+        self._clock_ok = False
+        self._booted = time.monotonic()
+        self._synced_since_boot = False
+        self._last_attempt: Optional[float] = None   # monotonic time of the last sync attempt
+        self._no_wifi_since: Optional[float] = None
         self.ident = load_or_create_identity(paths)
         self.settings = Settings(paths)
         self.tokens = TokenStore(paths)
@@ -147,7 +158,9 @@ class App:
                 log.exception("job failed")
 
     def _boot(self) -> None:
-        if not self.net.online() and self.net.saved_wifi():
+        self._load_cache()
+        saved = self.net.saved_wifi()
+        if not self.net.online() and saved:
             log.info("waiting for saved Wi-Fi…")
             for _ in range(20):
                 if self.net.online():
@@ -155,19 +168,31 @@ class App:
                 time.sleep(3)
         if self.net.online():
             self._enter_link_or_run()
+        elif saved and self.linked:
+            # Most likely a power cut that also restarted the router, which takes a few minutes.
+            # Keep the last calendar on the panel (e-ink holds it) and keep retrying quietly
+            # instead of showing the setup screen. See _wifi_gone_too_long for the way out.
+            log.info("saved Wi-Fi not reachable yet: keeping the last screen, retrying every %ds",
+                     BOOT_RETRY_SECONDS)
+            self.mode = RUN
         else:
             self._enter_setup()
+
+    def _sync_interval(self) -> float:
+        if not self._synced_since_boot:
+            return BOOT_RETRY_SECONDS
+        return self.settings.get("refresh_minutes") * 60
+
+    def _sync_due_in(self) -> float:
+        if self._last_attempt is None:
+            return 0
+        return self._last_attempt + self._sync_interval() - time.monotonic()
 
     def _seconds_until_tick(self) -> float:
         if self.mode != RUN:
             return 30
         now = datetime.now(self.tz)
-        waits = [60 * 60]
-        if self.last_sync:
-            nxt = self.last_sync + timedelta(minutes=self.settings.get("refresh_minutes"))
-            waits.append((nxt - now).total_seconds())
-        else:
-            waits.append(0)
+        waits = [60 * 60, self._sync_due_in()]
         midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), tzinfo=now.tzinfo)
         waits.append((midnight - now).total_seconds() + 5)
         if self._pair_until:
@@ -190,9 +215,64 @@ class App:
             if self.linked:
                 self._enter_link_or_run()
         elif self.mode == RUN:
+            if self._wifi_gone_too_long():
+                log.warning("no Wi-Fi for %d min since start: switching to Wi-Fi setup", NO_WIFI_SETUP_SECONDS // 60)
+                self._enter_setup()
+                return
             if self._pair_until and time.time() >= self._pair_until:
                 self._pair_until = 0
             self.refresh()
+
+    def _wifi_gone_too_long(self) -> bool:
+        """Before the first successful sync since boot, being on NO Wi-Fi at all for a while means
+        the home network may be gone for good (new router, new password): then the only way to
+        fix it is the setup hotspot. On Wi-Fi without internet, keep waiting."""
+        if self._synced_since_boot or self.demo:
+            self._no_wifi_since = None
+            return False
+        if self.net.current_ssid():
+            self._no_wifi_since = None
+            return False
+        if self._no_wifi_since is None:
+            self._no_wifi_since = time.monotonic()
+        return time.monotonic() - self._no_wifi_since >= NO_WIFI_SETUP_SECONDS
+
+    def _clock_ready(self) -> bool:
+        if not self._clock_ok:
+            self._clock_ok = bool(self._clock_synced()) or \
+                time.monotonic() - self._booted >= CLOCK_WAIT_SECONDS
+            if self._clock_ok:
+                log.info("clock: %s", datetime.now(self.tz).strftime("%Y-%m-%d %H:%M"))
+        return self._clock_ok
+
+    # ------------------------------------------------------------------ events cache
+    def _load_cache(self) -> None:
+        """Events from before the restart, so the device can draw something useful when it
+        comes back without internet. They are only drawn after an hour offline (see refresh)."""
+        data = load_json(self.paths.events)
+        if not data or self.demo:
+            return
+        try:
+            self.events = [event_from_dict(d, self.tz) for d in data.get("events", [])]
+            self.last_sync_ok = float(data["synced_at"])
+        except (KeyError, TypeError, ValueError) as e:
+            log.warning("ignoring unreadable events cache: %s", e)
+            self.events, self.last_sync_ok = [], None
+
+    def _save_cache(self) -> None:
+        if self.demo:
+            return
+        try:
+            save_json(self.paths.events, {"synced_at": self.last_sync_ok,
+                                          "events": [event_to_dict(e) for e in self.events]})
+        except OSError as e:
+            log.warning("could not save events cache: %s", e)
+
+    def _clear_cache(self) -> None:
+        try:
+            self.paths.events.unlink()
+        except FileNotFoundError:
+            pass
 
     # ------------------------------------------------------------------ modes
     def _enter_setup(self, error_ssid: Optional[str] = None) -> None:
@@ -258,20 +338,27 @@ class App:
         self.last_sync = datetime.now(tz)
         self.last_sync_ok = time.time()
         self.last_error = None
+        self._synced_since_boot = True
+        self._save_cache()
         log.info("synced %d events from %d calendars", len(self.events), len(ids))
 
     def refresh(self, force_sync: bool = False, force_display: bool = False) -> None:
         if self.mode != RUN:
             return
-        now = datetime.now(self.tz)
-        due = force_sync or not self.last_sync or \
-            now - self.last_sync >= timedelta(minutes=self.settings.get("refresh_minutes"))
-        if due:
+        if not self._clock_ready():
+            # Right after a power cut the clock can be days behind: syncing would use the wrong
+            # date window and drawing would show the wrong day. Try again shortly.
+            log.info("waiting for the clock to be set from the internet")
+            self._last_attempt = time.monotonic()
+            return
+        if force_sync or self._sync_due_in() <= 0:
+            self._last_attempt = time.monotonic()
             try:
                 self.sync()
             except AuthError as e:
                 log.warning("Google sign-in no longer valid: %s", e)
                 self.tokens.clear()
+                self._clear_cache()
                 self._enter_link_or_run()
                 return
             except ConfigError as e:
@@ -279,9 +366,15 @@ class App:
                 log.error("%s", e)
             except Exception as e:  # noqa: BLE001 - network hiccups etc.
                 self.last_error = str(e)
-                self.last_sync = now  # back off until next interval
                 log.warning("sync failed: %s", e)
         if self._pair_until and time.time() < self._pair_until:
+            return
+        if not self._synced_since_boot and not force_display and \
+                time.monotonic() - self._booted < OFFLINE_AFTER_SECONDS:
+            # The panel still shows the last good calendar from before the restart; don't
+            # replace it with an empty or stale one. After an hour offline, draw the cached
+            # events with the "Offline" note so at least the date is right.
+            log.debug("no sync since start yet, keeping the current screen")
             return
         s = self.settings
         if not force_display and s.get("quiet_enabled") and in_quiet_hours(
@@ -347,6 +440,7 @@ class App:
     def sign_out(self) -> None:
         revoke(self.tokens.load())
         self.tokens.clear()
+        self._clear_cache()
         self.events, self.calendars, self.last_sync = [], [], None
         self.settings.update(calendars=None)
         self._enter_link_or_run()
@@ -355,6 +449,7 @@ class App:
         log.warning("factory reset")
         revoke(self.tokens.load())
         self.tokens.clear()
+        self._clear_cache()
         self.settings.reset()
         self.events, self.calendars, self.last_sync, self.last_sync_ok = [], [], None, None
         self.net.forget_all()

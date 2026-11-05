@@ -177,11 +177,11 @@ class GoogleCalendar:
         self._store = store
         self._http = session or requests.Session()
 
-    def _access_token(self) -> str:
+    def _access_token(self, force_refresh: bool = False) -> str:
         tok = self._store.load()
         if not tok or not tok.get("refresh_token"):
             raise AuthError("not linked")
-        if tok.get("access_token") and tok.get("expires_at", 0) - 120 > time.time():
+        if not force_refresh and tok.get("access_token") and tok.get("expires_at", 0) - 120 > time.time():
             return tok["access_token"]
         r = self._http.post(TOKEN_URL, timeout=TIMEOUT, data={
             "client_id": self._client.client_id,
@@ -199,10 +199,16 @@ class GoogleCalendar:
         return tok["access_token"]
 
     def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        r = self._http.get(API + path, params=params, timeout=TIMEOUT,
-                           headers={"Authorization": "Bearer " + self._access_token()})
-        if r.status_code == 401:
-            raise AuthError("unauthorized")
+        # A 401 here means the ACCESS token was refused, not that the sign-in is gone. It happens
+        # after a power cut: the Pi has no battery clock, boots with an old time and thinks an
+        # expired token is still valid. So refresh and retry once; only an invalid_grant from the
+        # token endpoint (raised in _access_token) means the user really has to link again.
+        for attempt in range(2):
+            r = self._http.get(API + path, params=params, timeout=TIMEOUT,
+                               headers={"Authorization": "Bearer " + self._access_token(force_refresh=attempt > 0)})
+            if r.status_code != 401:
+                break
+            log.info("access token refused (401), refreshing")
         r.raise_for_status()
         return r.json()
 
