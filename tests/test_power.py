@@ -250,3 +250,24 @@ def test_revoked_sign_in_still_signs_out(tmp_path):
     cal, _ = _google(tmp_path, http)
     with pytest.raises(AuthError):
         cal.timezone()
+
+
+def test_panel_error_does_not_crash_and_retries(tmp_path):
+    from PIL import Image
+
+    from inkcal.display import Display
+
+    class Broken(Display):
+        fail, pushes = True, 0
+
+        def _push(self, black, red):
+            self.pushes += 1
+            if self.fail:
+                raise OSError(22, "Invalid argument")
+
+    d = Broken(tmp_path / "screen.png")
+    img = Image.new("RGB", (800, 480), (255, 255, 255))
+    assert d.show(img) is False and (tmp_path / "screen.png").exists()   # preview still written
+    d.fail = False
+    assert d.show(img) is True and d.pushes == 2                          # same image, tried again
+    assert d.show(img) is False and d.pushes == 2                         # now skipped as unchanged

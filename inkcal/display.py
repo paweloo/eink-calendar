@@ -21,6 +21,7 @@ class Display:
 
     def __init__(self, preview_path: Optional[Path] = None):
         self._last_hash: Optional[str] = None
+        self._failing = False
         self._lock = threading.Lock()
         self.preview_path = preview_path
 
@@ -34,7 +35,19 @@ class Display:
             if self.preview_path:
                 compose(black, red).save(self.preview_path)
             t = time.monotonic()
-            self._push(black, red)
+            try:
+                self._push(black, red)
+            except Exception as e:  # noqa: BLE001 - a panel problem must not take the web UI down
+                # Not remembering the hash means the next show() tries the panel again.
+                if not self._failing:
+                    log.exception("display refresh failed (web UI keeps running)")
+                else:
+                    log.error("display refresh failed again: %s", e)
+                self._failing = True
+                return False
+            if self._failing:
+                log.info("display works again")
+            self._failing = False
             log.info("display refreshed in %.1f s", time.monotonic() - t)
             self._last_hash = digest
             return True

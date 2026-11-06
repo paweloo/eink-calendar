@@ -12,6 +12,13 @@ WorkingDirectory=/opt/inkcal
 Environment=INKCAL_DATA=/var/lib/inkcal
 Environment=INKCAL_ETC=/etc/inkcal
 Environment=PYTHONUNBUFFERED=1
+# GPIO for the panel: use lgpio (gpiochip). Without this, gpiozero silently falls back to the
+# old sysfs interface, which current kernels reject ("export: Invalid argument" for pin 24).
+Environment=GPIOZERO_PIN_FACTORY=lgpio
+# lgpio creates its notification files in the working directory (/opt/inkcal is root-owned,
+# so opening the GPIO chip fails). LG_WD moves them to a directory we own: /run/inkcal.
+RuntimeDirectory=inkcal
+Environment=LG_WD=/run/inkcal
 ExecStart=/usr/bin/python3 -m inkcal run
 # Port 80 without running as root
 AmbientCapabilities=CAP_NET_BIND_SERVICE
