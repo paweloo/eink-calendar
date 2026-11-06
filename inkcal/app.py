@@ -89,6 +89,7 @@ class App:
         self._synced_since_boot = False
         self._last_attempt: Optional[float] = None   # monotonic time of the last sync attempt
         self._no_wifi_since: Optional[float] = None
+        self._show_after_first_sync = False                # set by on_linked
         self.ident = load_or_create_identity(paths)
         self.settings = Settings(paths)
         self.tokens = TokenStore(paths)
@@ -382,11 +383,14 @@ class App:
             log.debug("no sync since start yet, keeping the current screen")
             return
         s = self.settings
-        if not force_display and s.get("quiet_enabled") and in_quiet_hours(
+        just_linked = self._show_after_first_sync and self._synced_since_boot
+        if not force_display and not just_linked and s.get("quiet_enabled") and in_quiet_hours(
                 datetime.now(self.tz).time(), parse_hhmm(s.get("quiet_start")), parse_hhmm(s.get("quiet_end"))):
             log.debug("quiet hours, not redrawing")
             return
         self.display.show(self.render(), force=force_display)
+        if just_linked:
+            self._show_after_first_sync = False
 
     def render(self):
         s = self.settings
@@ -424,6 +428,12 @@ class App:
                                         self.settings.get("theme")))
         self.mode = RUN
         self.last_sync = None
+        # Until this first sync works, retry every 30 s (not every 15 min) and keep the
+        # "You're all set" screen up instead of drawing an empty calendar.
+        self._synced_since_boot = False
+        self._last_attempt = None
+        # Someone is standing at the calendar waiting for it: draw even during quiet hours.
+        self._show_after_first_sync = True
         self.refresh(force_sync=True)
 
     def show_pair_code(self) -> None:

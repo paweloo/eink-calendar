@@ -271,3 +271,35 @@ def test_panel_error_does_not_crash_and_retries(tmp_path):
     d.fail = False
     assert d.show(img) is True and d.pushes == 2                          # same image, tried again
     assert d.show(img) is False and d.pushes == 2                         # now skipped as unchanged
+
+
+def _quiet_now(dev):
+    now = datetime.now(TZ)
+    dev.settings.update(quiet_enabled=True, quiet_start=(now - timedelta(hours=1)).strftime("%H:%M"),
+                        quiet_end=(now + timedelta(hours=1)).strftime("%H:%M"))
+
+
+def test_calendar_appears_right_after_linking_even_in_quiet_hours(make_device):
+    dev = make_device(HomeNetwork(wifi=True, internet=True), Source(), cached=False)
+    _quiet_now(dev)
+    dev.mode = "link"
+    dev.on_linked()
+    assert dev.display.shown == 2          # "You're all set", then the calendar straight away
+    dev._last_attempt = None
+    dev._tick()
+    assert dev.display.shown == 2          # later syncs respect quiet hours again
+
+
+def test_failed_first_sync_after_linking_retries_in_30s(make_device):
+    src = Source(ok=False)
+    dev = make_device(HomeNetwork(wifi=True, internet=True), src, cached=False)
+    dev._synced_since_boot = True          # e.g. signed out and linked again without a restart
+    _quiet_now(dev)
+    dev.mode = "link"
+    dev.on_linked()
+    assert dev.display.shown == 1          # "You're all set" stays, no empty calendar
+    assert dev._sync_due_in() <= app_mod.BOOT_RETRY_SECONDS
+    src.ok = True
+    dev._last_attempt -= app_mod.BOOT_RETRY_SECONDS
+    dev._tick()
+    assert dev.display.shown == 2
