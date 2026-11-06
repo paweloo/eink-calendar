@@ -21,7 +21,7 @@ apt-get update -q
 DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
   python3 python3-pil python3-requests python3-flask python3-waitress python3-qrcode \
   python3-spidev python3-gpiozero python3-lgpio \
-  network-manager avahi-daemon rsync
+  network-manager dnsmasq-base avahi-daemon rsync
 
 echo "==> SPI on"
 if command -v raspi-config >/dev/null; then raspi-config nonint do_spi 0; fi

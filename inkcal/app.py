@@ -214,6 +214,13 @@ class App:
                         self._enter_link_or_run()
                         return
                 self._enter_setup()
+            elif not self.net.hotspot_active():
+                # The Welcome screen tells people to join the setup Wi-Fi: it must really be up.
+                log.warning("setup Wi-Fi is not running, starting it again")
+                try:
+                    self.net.start_hotspot(self.ident["hotspot_ssid"], self.ident["hotspot_password"])
+                except NetworkError as e:
+                    log.error("could not start setup Wi-Fi: %s", e)
         elif self.mode == LINK:
             if self.linked:
                 self._enter_link_or_run()

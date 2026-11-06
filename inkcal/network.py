@@ -94,6 +94,11 @@ class NetworkManager:
             "ipv6.method", "disabled",
             "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password,
             "wifi-sec.proto", "rsn", "wifi-sec.pairwise", "ccmp", "wifi-sec.group", "ccmp",
+            # The Zero 2 W's brcmfmac chip mishandles protected management frames in AP mode:
+            # phones then report "couldn't join" even with the right password.
+            "wifi-sec.pmf", "disable",
+            # A fixed, universally allowed 2.4 GHz channel instead of whatever the driver picks.
+            "802-11-wireless.channel", "6",
         )
         self._nmcli("con", "up", HOTSPOT_CON, timeout=40)
         log.info("hotspot %s up", ssid)

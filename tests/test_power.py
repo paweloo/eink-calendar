@@ -48,6 +48,9 @@ class HomeNetwork:
     def stop_hotspot(self):
         self.hotspot = False
 
+    def hotspot_active(self):
+        return self.hotspot
+
 
 class Source:
     def __init__(self, ok=True):
@@ -303,3 +306,14 @@ def test_failed_first_sync_after_linking_retries_in_30s(make_device):
     dev._last_attempt -= app_mod.BOOT_RETRY_SECONDS
     dev._tick()
     assert dev.display.shown == 2
+
+
+def test_setup_wifi_is_restarted_if_it_went_down(make_device):
+    net = HomeNetwork(wifi=False)
+    dev = make_device(net)
+    dev.tokens.clear()
+    dev._boot()
+    assert dev.mode == "setup" and net.hotspot
+    net.hotspot = False                      # failed to start, or the driver dropped it
+    dev._tick()
+    assert net.hotspot
