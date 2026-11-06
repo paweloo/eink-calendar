@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional
 from PIL import Image
 
 from ..models import Event, events_on
-from .canvas import BLACK, HEIGHT, RED, WHITE, WIDTH, Canvas, font
+from .canvas import BLACK, HEIGHT, WHITE, WIDTH, Canvas, font, palette
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December"]
@@ -22,7 +22,7 @@ class RenderContext:
     now: datetime                       # timezone-aware, local
     events: List[Event] = field(default_factory=list)
     view: str = "month"
-    theme: str = "classic"              # classic | mono | bold
+    theme: str = "classic"              # classic | mono | bold | dark
     week_start: int = 0                 # 0 = Monday
     clock_24h: bool = True
     updated: Optional[datetime] = None
@@ -31,7 +31,7 @@ class RenderContext:
 
     @property
     def accent(self):
-        return BLACK if self.theme == "mono" else RED
+        return palette(self.theme)[2]
 
     @property
     def today(self) -> date:
@@ -52,7 +52,7 @@ class RenderContext:
         return f"{self.hm(e.start)} – {self.hm(e.end)}"
 
 
-def _footer(c: Canvas, ctx: RenderContext, x0: int, x1: int, y: int, fill=BLACK) -> None:
+def _footer(c: Canvas, ctx: RenderContext, x0: int, x1: int, y: int, fill=None) -> None:
     # No "updated HH:MM" when healthy: it would change every sync and force a ~20 s
     # e-ink refresh even when no event changed. Staleness is only shown when it matters.
     f = font("inter", 11, 500)
@@ -73,14 +73,14 @@ def _ongoing_or_next(ctx: RenderContext, evs: List[Event]) -> Optional[Event]:
 # --------------------------------------------------------------------------- month
 
 def month(ctx: RenderContext) -> Image.Image:
-    c = Canvas(accent=ctx.accent)
-    A, today = ctx.accent, ctx.today
+    c = Canvas(ctx.theme)
+    A, INK, today = c.accent, c.ink, ctx.today
     bold = ctx.theme == "bold"
 
     # Header
     if bold:
         c.rect((0, 0, 499, 63), fill=BLACK)
-    fg = WHITE if bold else BLACK
+    fg = WHITE if bold else INK
     year_col = (WHITE if A == BLACK else A) if bold else A
     title = MONTHS[today.month - 1].upper()
     yf = font("archivo", 32, 900)
@@ -123,8 +123,8 @@ def month(ctx: RenderContext) -> Image.Image:
                 c.circle(cx, cy, r, fill=A)
                 num_col, dot_col, f = WHITE, WHITE, nf_b
             else:
-                c.circle(cx, cy, r, outline=BLACK, width=1)
-                num_col, dot_col, f = BLACK, A, nf
+                c.circle(cx, cy, r, outline=INK, width=1)
+                num_col, dot_col, f = INK, A, nf
             c.text((cx, cy - (4 if n else 0)), str(d.day), f, num_col, anchor="mm")
             if n:
                 total = n * 5 + (n - 1) * 3
@@ -155,7 +155,7 @@ def month(ctx: RenderContext) -> Image.Image:
             c.text((px + 13, y + 12), f"+{len(todays) - i} more today", tf)
             y += 22
             break
-        c.rect((px, y, px + 2, y + 33), fill=A if e is nxt else BLACK)
+        c.rect((px, y, px + 2, y + 33), fill=A if e is nxt else INK)
         c.text((px + 13, y + 11), ctx.span(e), tf)
         c.text((px + 13, y + 30), c.fit(e.title, ttl, pw - 13), ttl)
         y += 44
@@ -182,8 +182,8 @@ def month(ctx: RenderContext) -> Image.Image:
 # --------------------------------------------------------------------------- week
 
 def week(ctx: RenderContext) -> Image.Image:
-    c = Canvas(accent=ctx.accent)
-    A, today = ctx.accent, ctx.today
+    c = Canvas(ctx.theme)
+    A, INK, PAPER, today = c.accent, c.ink, c.paper, ctx.today
     bold = ctx.theme == "bold"
     start = today - timedelta(days=(today.weekday() - ctx.week_start) % 7)
     days = [start + timedelta(days=i) for i in range(7)]
@@ -191,7 +191,7 @@ def week(ctx: RenderContext) -> Image.Image:
 
     if bold:
         c.rect((0, 0, WIDTH - 1, 69), fill=BLACK)
-    fg = WHITE if bold else BLACK
+    fg = WHITE if bold else INK
     year_col = (WHITE if A == BLACK else A) if bold else A
     m0, m1 = MONTHS[start.month - 1][:3].upper(), MONTHS[end.month - 1][:3].upper()
     title = f"{m0} {start.day}–{end.day}" if m0 == m1 else f"{m0} {start.day} – {m1} {end.day}"
@@ -214,7 +214,7 @@ def week(ctx: RenderContext) -> Image.Image:
         xr = int(x0 + cw * (i + 1))
         if i:
             c.vline(x, 72, bottom + 2)
-        col = BLACK
+        col = INK
         if d == today:
             c.rect((x + 4, 76, xr - 4, 126), fill=A)
             col = WHITE
@@ -237,9 +237,9 @@ def week(ctx: RenderContext) -> Image.Image:
                 c.text((x + 11, y + 12), f"+{len(evs) - k} more", tf)
                 break
             if e.all_day:
-                c.rect((x + 8, y, xr - 8, y + h), fill=BLACK)
+                c.rect((x + 8, y, xr - 8, y + h), fill=INK)
                 for li, line in enumerate(lines):
-                    c.text((x + 13, y + 16 + 15 * li), line, adf, WHITE)
+                    c.text((x + 13, y + 16 + 15 * li), line, adf, PAPER)
             else:
                 c.text((x + 11, y + 10), ctx.hm(e.start), tf)
                 for li, line in enumerate(lines):
@@ -254,11 +254,13 @@ def week(ctx: RenderContext) -> Image.Image:
 # --------------------------------------------------------------------------- agenda
 
 def agenda(ctx: RenderContext) -> Image.Image:
-    c = Canvas(accent=ctx.accent)
-    A, today, now = ctx.accent, ctx.today, ctx.now
+    c = Canvas(ctx.theme)
+    A, INK, today, now = c.accent, c.ink, ctx.today, ctx.now
 
-    # Left: big date on black
+    # Left: big date on black (on the dark theme it merges with the page, so draw a divider)
     c.rect((0, 0, 259, HEIGHT - 1), fill=BLACK)
+    if c.paper == BLACK:
+        c.vline(259, 0, HEIGHT - 1, 2, A)
     c.text((22, 34), DAY_NAMES[today.weekday()].upper(), font("inter", 13, 700), WHITE)
     c.text((14, 150), str(today.day), font("archivo", 140, 900), WHITE)
     c.text((22, 190), f"{MONTHS[today.month - 1]} {today.year}", font("inter", 22, 500), WHITE)
@@ -312,8 +314,8 @@ def agenda(ctx: RenderContext) -> Image.Image:
             if y + h > HEIGHT - 6:
                 break
         c.text((x0, y + 24), "TODAY" if d == today else DOW[d.weekday()], font("inter", 11, 700),
-               A if d == today else BLACK)
-        c.text((x0, y + 50), str(d.day), font("archivo", 26, 900), A if d == today else BLACK)
+               A if d == today else INK)
+        c.text((x0, y + 50), str(d.day), font("archivo", 26, 900), A if d == today else INK)
         for k, e in enumerate(evs):
             by = y + 30 + 22 * k
             c.text((x0 + 80, by), ctx.when(e), eb)

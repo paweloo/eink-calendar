@@ -13,6 +13,7 @@ THEMES = {
     "classic": "Classic: red accents",
     "mono": "Mono: black only",
     "bold": "Bold: inverted header",
+    "dark": "Dark: white on black, red accents",
 }
 REFRESH_CHOICES = (5, 15, 30, 60)
 

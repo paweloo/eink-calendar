@@ -107,7 +107,7 @@ def main(argv=None) -> None:
 
     p = sub.add_parser("preview")
     p.add_argument("--out", default="out/preview")
-    p.add_argument("--themes", default="classic,mono,bold")
+    p.add_argument("--themes", default="classic,mono,bold,dark")
     p.set_defaults(fn=cmd_preview)
 
     f = sub.add_parser("firstboot")

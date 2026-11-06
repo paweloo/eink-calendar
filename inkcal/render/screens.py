@@ -3,11 +3,7 @@ from __future__ import annotations
 
 from PIL import Image
 
-from .canvas import BLACK, HEIGHT, RED, WHITE, WIDTH, Canvas, font
-
-
-def _accent(theme: str):
-    return BLACK if theme == "mono" else RED
+from .canvas import HEIGHT, WHITE, WIDTH, Canvas, font, palette
 
 
 def _step(c: Canvas, n: int, text: str, y: int, active: bool) -> None:
@@ -15,14 +11,14 @@ def _step(c: Canvas, n: int, text: str, y: int, active: bool) -> None:
         c.circle(55, y, 15, fill=c.accent)
         c.text((55, y), str(n), font("inter", 15, 700), WHITE, anchor="mm")
     else:
-        c.circle(55, y, 15, outline=BLACK, width=2)
-        c.text((55, y), str(n), font("inter", 15, 700), BLACK, anchor="mm")
+        c.circle(55, y, 15, outline=c.ink, width=2)
+        c.text((55, y), str(n), font("inter", 15, 700), anchor="mm")
     for i, line in enumerate(c.wrap(text, font("inter", 16), 360, 2)):
         c.text((84, y + 6 + 21 * i), line, font("inter", 16))
 
 
 def welcome(ssid: str, password: str, theme: str = "classic") -> Image.Image:
-    c = Canvas(accent=_accent(theme))
+    c = Canvas(theme)
     hf = font("archivo", 96, 900)
     c.text((36, 106), "Hello", hf)
     c.text((36 + c.width("Hello", hf), 106), ".", hf, c.accent)
@@ -45,10 +41,10 @@ def welcome(ssid: str, password: str, theme: str = "classic") -> Image.Image:
 def link(url: str, code: str, wifi_name: str = "", theme: str = "classic",
          title: str = "Link your\nGoogle account",
          note: str = "Only someone who can see this screen can use the code.") -> Image.Image:
-    c = Canvas(accent=_accent(theme))
+    c = Canvas(theme)
     y = 44
     if wifi_name:
-        c.d.line((40, 38, 45, 43, 54, 32), fill=BLACK, width=3)
+        c.d.line((40, 38, 45, 43, 54, 32), fill=c.ink, width=3)
         c.text((64, 45), f"Connected to {wifi_name}", font("inter", 14, 600))
         y = 62
     hf = font("archivo", 52, 900)
@@ -78,8 +74,7 @@ def link(url: str, code: str, wifi_name: str = "", theme: str = "classic",
 
 
 def ready(email: str, host: str, device_name: str, theme: str = "classic") -> Image.Image:
-    accent = _accent(theme)
-    c = Canvas(accent=accent, background=accent)
+    c = Canvas(theme, background=palette(theme)[2])
     c.circle(76, 76, 31, outline=WHITE, width=5)
     c.d.line((60, 78, 71, 89, 92, 66), fill=WHITE, width=5)
     c.text((40, 210), "You’re all set.", font("archivo", 84, 900), WHITE)
@@ -97,7 +92,7 @@ def ready(email: str, host: str, device_name: str, theme: str = "classic") -> Im
 
 def message(title: str, body: str, footer: str = "", theme: str = "classic") -> Image.Image:
     """Generic status screen: connecting, errors, factory reset, etc."""
-    c = Canvas(accent=_accent(theme))
+    c = Canvas(theme)
     c.rect((40, 60, 51, 71), fill=c.accent)
     tf = font("archivo", 52, 900)
     y = 130

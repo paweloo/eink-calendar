@@ -22,6 +22,19 @@ FAMILIES = {"inter": "Inter.ttf", "archivo": "Archivo.ttf"}
 
 Color = Tuple[int, int, int]
 
+# Theme palettes: (paper, ink, accent). "ink" is the text/line colour, "paper" the background.
+# Text on an accent fill (today's circle, the "ready" screen) is always WHITE.
+PALETTES = {
+    "classic": (WHITE, BLACK, RED),
+    "mono": (WHITE, BLACK, BLACK),
+    "bold": (WHITE, BLACK, RED),
+    "dark": (BLACK, WHITE, RED),
+}
+
+
+def palette(theme: str) -> Tuple[Color, Color, Color]:
+    return PALETTES.get(theme, PALETTES["classic"])
+
 
 @lru_cache(maxsize=128)
 def font(family: str, size: int, weight: int = 400) -> ImageFont.FreeTypeFont:
@@ -53,15 +66,15 @@ def font(family: str, size: int, weight: int = 400) -> ImageFont.FreeTypeFont:
 
 
 class Canvas:
-    def __init__(self, accent: Color = RED, background: Color = WHITE):
-        self.img = Image.new("RGB", (WIDTH, HEIGHT), background)
+    def __init__(self, theme: str = "classic", background: Optional[Color] = None):
+        self.paper, self.ink, self.accent = palette(theme)
+        self.img = Image.new("RGB", (WIDTH, HEIGHT), background or self.paper)
         self.d = ImageDraw.Draw(self.img)
         self.d.fontmode = "1"  # no anti-aliasing
-        self.accent = accent
 
     # -- text -----------------------------------------------------------------
-    def text(self, xy, s: str, f, fill: Color = BLACK, anchor: str = "ls") -> None:
-        self.d.text(xy, s, font=f, fill=fill, anchor=anchor)
+    def text(self, xy, s: str, f, fill: Optional[Color] = None, anchor: str = "ls") -> None:
+        self.d.text(xy, s, font=f, fill=fill or self.ink, anchor=anchor)
 
     def width(self, s: str, f) -> int:
         return int(self.d.textlength(s, font=f))
@@ -92,11 +105,11 @@ class Canvas:
     def rect(self, box, fill: Optional[Color] = None, outline: Optional[Color] = None, width: int = 1) -> None:
         self.d.rectangle(box, fill=fill, outline=outline, width=width)
 
-    def hline(self, x0: int, x1: int, y: int, width: int = 1, fill: Color = BLACK) -> None:
-        self.d.rectangle((x0, y, x1, y + width - 1), fill=fill)
+    def hline(self, x0: int, x1: int, y: int, width: int = 1, fill: Optional[Color] = None) -> None:
+        self.d.rectangle((x0, y, x1, y + width - 1), fill=fill or self.ink)
 
-    def vline(self, x: int, y0: int, y1: int, width: int = 1, fill: Color = BLACK) -> None:
-        self.d.rectangle((x, y0, x + width - 1, y1), fill=fill)
+    def vline(self, x: int, y0: int, y1: int, width: int = 1, fill: Optional[Color] = None) -> None:
+        self.d.rectangle((x, y0, x + width - 1, y1), fill=fill or self.ink)
 
     def circle(self, cx: int, cy: int, r: int, fill: Optional[Color] = None,
                outline: Optional[Color] = None, width: int = 1) -> None:
@@ -112,13 +125,19 @@ class Canvas:
         cell = max(1, size // n)
         ox = x + (size - cell * n) // 2
         oy = y + (size - cell * n) // 2
+        if self.paper != WHITE:
+            # Phone cameras expect dark modules on light: give the code its own white tile
+            # with a quiet zone, even on a dark theme.
+            q_ = max(8, cell * 2)
+            self.d.rectangle((ox - q_, oy - q_, ox + cell * n + q_ - 1, oy + cell * n + q_ - 1), fill=WHITE)
         for r, row in enumerate(m):
             for c, on in enumerate(row):
                 if on:
                     self.d.rectangle((ox + c * cell, oy + r * cell, ox + (c + 1) * cell - 1, oy + (r + 1) * cell - 1), fill=BLACK)
 
-    def wifi_icon(self, x: int, y: int, fill: Color = BLACK) -> None:
+    def wifi_icon(self, x: int, y: int, fill: Optional[Color] = None) -> None:
         """12x10 px Wi-Fi glyph, top-left at (x, y)."""
+        fill = fill or self.ink
         cx, cy = x + 6, y + 10
         for r in (10, 7, 4):
             self.d.arc((cx - r, cy - r, cx + r, cy + r), 225, 315, fill=fill, width=2)

@@ -5,7 +5,7 @@ Built to be set up by anyone with a phone and to be copied onto many devices.
 
 - **Setup with no keyboard:** the screen shows a QR code. Your phone joins the calendar's own Wi-Fi, picks
   the home network, then links Google with a 6-digit code shown on the screen.
-- **Views:** month (default), week, agenda. **Themes:** classic (red), mono, bold.
+- **Views:** month (default), week, agenda. **Themes:** classic (red), mono, bold, dark (white on black, red accents).
 - **Settings on the phone** at `http://calendar-xxxx.local`: view, theme, week start, 24-hour clock, which calendars to show,
   sync interval, quiet hours, switch account, sign out, change Wi-Fi, restart, factory reset.
 - **Fast and gentle on the panel:** screens are drawn directly with Pillow (no browser), in about 10 ms on a laptop.

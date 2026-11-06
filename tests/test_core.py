@@ -18,7 +18,7 @@ def _events(now):
 
 
 @pytest.mark.parametrize("view", ["month", "week", "agenda"])
-@pytest.mark.parametrize("theme", ["classic", "mono", "bold"])
+@pytest.mark.parametrize("theme", ["classic", "mono", "bold", "dark"])
 @pytest.mark.parametrize("day", [date(2026, 1, 17), date(2026, 8, 31), date(2026, 2, 1), date(2026, 12, 31)])
 def test_views_render_three_colours(view, theme, day):
     now = datetime(day.year, day.month, day.day, 9, 0, tzinfo=TZ)
@@ -28,6 +28,9 @@ def test_views_render_three_colours(view, theme, day):
     assert colours <= {WHITE, BLACK, RED}, colours
     if theme == "mono":
         assert RED not in colours
+    if theme == "dark":
+        counts = {c: n for n, c in img.getcolors(1 << 16)}
+        assert counts[BLACK] > counts[WHITE] and RED in counts   # black page, white text, red accents
 
 
 def test_planes_are_disjoint():
@@ -82,3 +85,10 @@ def test_pair_code_lockout():
     for _ in range(PairCode.MAX_FAILURES):
         pc.check("not-it")
     assert pc.value != first and changed
+
+
+def test_dark_theme_qr_codes_stay_dark_on_light():
+    img = screens.welcome("Calendar-ABCD", "k7m2p9xa", theme="dark")
+    assert img.getpixel((5, 5)) == BLACK                       # dark page
+    qr = {c: n for n, c in img.crop((556, 56, 756, 256)).getcolors(1 << 16)}
+    assert qr[WHITE] > qr[BLACK]                               # QR on its own white tile, scannable
