@@ -392,8 +392,10 @@ class App:
         if just_linked:
             self._show_after_first_sync = False
 
-    def render(self):
-        s = self.settings
+    def render(self, **overrides):
+        """The current calendar picture. `overrides` (view, theme, week_start, clock_24h) are for
+        the live preview on the settings page: they are not saved and not sent to the panel."""
+        s = {**self.settings.all(), **overrides}
         offline = bool(self.last_sync_ok is None or time.time() - self.last_sync_ok > OFFLINE_AFTER_SECONDS)
         ctx = RenderContext(
             now=datetime.now(self.tz), events=self.events, view=s.get("view"), theme=s.get("theme"),

@@ -255,7 +255,17 @@ def create_web(dev: "App") -> Flask:
     def screen():
         if dev.mode != "run":
             abort(404)
-        black, red = to_planes(dev.render())
+        # Live preview from the settings form: unsaved display options as query parameters.
+        a, preview = request.args, {}
+        if a.get("view") in VIEWS:
+            preview["view"] = a["view"]
+        if a.get("theme") in THEMES:
+            preview["theme"] = a["theme"]
+        if a.get("week_start") in ("0", "6"):
+            preview["week_start"] = int(a["week_start"])
+        if a.get("clock_24h") in ("0", "1"):
+            preview["clock_24h"] = a["clock_24h"] == "1"
+        black, red = to_planes(dev.render(**preview))
         buf = io.BytesIO()
         compose(black, red).save(buf, "PNG")
         buf.seek(0)

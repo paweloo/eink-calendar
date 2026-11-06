@@ -9,7 +9,8 @@
 {% if error %}<p class="notice err" role="alert">{{ error }}</p>{% endif %}
 {% if last_error %}<p class="notice err">Last sync failed: {{ last_error }}</p>{% endif %}
 
-<div class="preview"><img src="{{ url_for('screen') }}" alt="What the calendar shows now" width="800" height="480"></div>
+<div class="preview" id="preview"><img id="preview-img" src="{{ url_for('screen') }}" alt="What the calendar shows now" width="800" height="480"></div>
+<p class="small preview-note" id="preview-note" aria-live="polite">What the calendar shows now</p>
 
 <div class="card">
   <div class="stack" style="gap:2px">
@@ -19,7 +20,7 @@
   <form method="post" action="{{ url_for('action', name='sync') }}"><button class="btn dark" type="submit">Sync now</button></form>
 </div>
 
-<form method="post">
+<form method="post" id="settings-form">
   <section class="group" style="border-top:0;padding-top:0">
     <h2>Display</h2>
     <fieldset style="border:0;margin:0;padding:0">
@@ -109,4 +110,39 @@
     </form>
   </details>
 </section>
+
+<script>
+/* Live preview: redraw the picture with the unsaved display options (nothing is saved or
+   sent to the panel until "Save changes"). The device renders it in a fraction of a second. */
+(function () {
+  var form = document.getElementById('settings-form');
+  var img = document.getElementById('preview-img');
+  var box = document.getElementById('preview');
+  var note = document.getElementById('preview-note');
+  var base = img.getAttribute('src');
+  function current() {
+    var v = form.querySelector('input[name=view]:checked');
+    return 'view=' + (v ? v.value : '') +
+      '&theme=' + form.theme.value +
+      '&week_start=' + form.week_start.value +
+      '&clock_24h=' + (form.clock_24h.checked ? '1' : '0');
+  }
+  var saved = current(), timer = null;
+  function update() {
+    var q = current(), changed = q !== saved;
+    box.classList.add('loading');
+    img.src = base + '?' + q + '&t=' + Date.now();
+    note.textContent = changed ? 'Preview · press Save changes to show it on the calendar'
+                               : 'What the calendar shows now';
+    box.classList.toggle('unsaved', changed);
+  }
+  img.addEventListener('load', function () { box.classList.remove('loading'); });
+  img.addEventListener('error', function () { box.classList.remove('loading'); });
+  ['view', 'theme', 'week_start', 'clock_24h'].forEach(function (name) {
+    Array.prototype.forEach.call(form.querySelectorAll('[name=' + name + ']'), function (el) {
+      el.addEventListener('change', function () { clearTimeout(timer); timer = setTimeout(update, 120); });
+    });
+  });
+})();
+</script>
 {% endblock %}

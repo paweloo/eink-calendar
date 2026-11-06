@@ -68,6 +68,17 @@ def test_setup_to_link_to_run(device, tmp_path):
     assert r.status_code == 200 and b"Calendars to show" in r.data
     assert c.get("/screen.png").mimetype == "image/png"
 
+    # Live preview: unsaved options change the picture but not the settings or the panel.
+    import io
+    from PIL import Image
+    shown = dev.display._last_hash
+    def blackness(r):
+        img = Image.open(io.BytesIO(r.data)).convert("L")
+        return sum(1 for p in img.getdata() if p < 128) / (800 * 480)
+    assert blackness(c.get("/screen.png?theme=dark&view=agenda")) > 0.6
+    assert blackness(c.get("/screen.png?theme=bogus")) < 0.4          # invalid value -> saved theme
+    assert dev.settings.get("theme") == "classic" and dev.display._last_hash == shown
+
     r = c.post("/settings", data={"view": "week", "theme": "mono", "refresh_minutes": "30",
                                   "quiet_start": "22:00", "quiet_end": "07:00", "device_name": "Hall",
                                   "cal_personal": "on"})

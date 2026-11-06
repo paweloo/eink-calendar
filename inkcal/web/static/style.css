@@ -79,7 +79,11 @@ section.group { margin-top: 26px; padding-top: 22px; border-top: 1.5px solid var
 .seg label:has(input:focus-visible) { outline: 3px solid var(--red); outline-offset: -3px; }
 
 .preview { margin-top: 16px; border: 1.5px solid var(--ink); border-radius: var(--radius); overflow: hidden; }
-.preview img { display: block; width: 100%; height: auto; }
+.preview img { display: block; width: 100%; height: auto; transition: opacity .15s; }
+.preview.loading img { opacity: .55; }
+.preview.unsaved { border-color: var(--red); border-style: dashed; }
+.preview-note { margin: 6px 2px 0; }
+@media (prefers-reduced-motion: reduce) { .preview img { transition: none; } }
 .notice { margin-top: 16px; padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; }
 .notice.ok { background: #e6f2e9; color: #14532d; }
 .notice.err { border: 2px solid var(--red-dark); color: var(--red-dark); }
