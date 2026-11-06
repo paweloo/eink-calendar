@@ -257,8 +257,9 @@ def agenda(ctx: RenderContext) -> Image.Image:
     c = Canvas(ctx.theme)
     A, INK, today, now = c.accent, c.ink, ctx.today, ctx.now
 
-    # Left: big date on black (on the dark theme it merges with the page, so draw a divider)
-    c.rect((0, 0, 259, HEIGHT - 1), fill=BLACK)
+    # Left: big date in white on a solid panel: red on classic, black elsewhere
+    # (on the dark theme the black panel merges with the page, so draw a red divider)
+    c.rect((0, 0, 259, HEIGHT - 1), fill=A if ctx.theme == "classic" else BLACK)
     if c.paper == BLACK:
         c.vline(259, 0, HEIGHT - 1, 2, A)
     c.text((22, 34), DAY_NAMES[today.weekday()].upper(), font("inter", 13, 700), WHITE)
