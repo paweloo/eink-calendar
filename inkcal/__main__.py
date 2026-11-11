@@ -75,6 +75,10 @@ def cmd_firstboot(args) -> None:
     ident = load_or_create_identity(paths)
     host = ident["hostname"]
     subprocess.run(["hostnamectl", "set-hostname", host], check=False)
+    # avahi reads the hostname only when it starts. When install.sh runs this on a live system,
+    # <host>.local would not resolve until the next reboot. try-restart does nothing if avahi is
+    # not running yet (golden-image first boot); --no-block avoids waiting on our own ordering.
+    subprocess.run(["systemctl", "--no-block", "try-restart", "avahi-daemon.service"], check=False)
     try:
         hosts = Path("/etc/hosts").read_text().splitlines()
         hosts = [line for line in hosts if not line.startswith("127.0.1.1")] + [f"127.0.1.1\t{host}"]
