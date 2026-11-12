@@ -1,5 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Pair this phone{% endblock %}
+{% block title %}Pair this phone{% if try_other %}
+<script>
+// Already paired on the calendar's other address? Check it's reachable, then fetch the pairing.
+(function () {
+  var ctl = new AbortController();
+  var timer = setTimeout(function () { ctl.abort(); }, 2500);
+  fetch({{ try_other.probe|tojson }}, {mode: "no-cors", cache: "no-store", signal: ctl.signal})
+    .then(function () { clearTimeout(timer); location.replace({{ try_other.go|tojson }}); })
+    .catch(function () {});
+})();
+</script>
+{% endif %}
+{% endblock %}
 {% block body %}
 <h1>Pair this phone</h1>
 <p class="lead">To change settings, enter the code shown on the calendar. You only need to do this once on each phone or computer.</p>
@@ -21,4 +33,16 @@
   </div>
   <button class="btn mt" type="submit">Pair</button>
 </form>
+{% if try_other %}
+<script>
+// Already paired on the calendar's other address? Check it's reachable, then fetch the pairing.
+(function () {
+  var ctl = new AbortController();
+  var timer = setTimeout(function () { ctl.abort(); }, 2500);
+  fetch({{ try_other.probe|tojson }}, {mode: "no-cors", cache: "no-store", signal: ctl.signal})
+    .then(function () { clearTimeout(timer); location.replace({{ try_other.go|tojson }}); })
+    .catch(function () {});
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -120,3 +120,47 @@ def test_settings_open_right_after_google_link(device):
     assert c.get("/link").headers["Location"].endswith("/settings")
     assert c.get("/settings").status_code == 200
     assert c.get("/screen.png").status_code == 200
+
+
+def test_pairing_carries_over_between_ip_and_local_name(device, monkeypatch):
+    """Paired on the IP (from the panel's QR code), then opened <name>.local: no second code."""
+    import inkcal.web as web_mod
+    from urllib.parse import urlsplit
+    monkeypatch.setattr(web_mod, "local_ip", lambda: "192.168.1.50")
+    dev = device
+    _drain(dev)
+    dev.mode = "run"
+    web = create_web(dev)
+    ip, local = {"Host": "192.168.1.50:8080"}, {"Host": f"{dev.mdns_host}:8080"}
+    on_ip, on_local = web.test_client(), web.test_client()   # separate cookie jars, like two hosts
+    with on_ip.session_transaction(headers=ip) as s:
+        s["epoch"] = dev.settings.get("auth_epoch")
+
+    # .local pair page offers to try the IP address.
+    page = on_local.get("/pair?next=/settings", headers=local).data.decode()
+    go = re.search(r'location\.replace\("([^"]+)"\)', page).group(1).replace("\\u0026", "&")
+    assert "http://192.168.1.50:8080/healthz" in page and go.startswith("http://192.168.1.50:8080/pair/handoff")
+
+    # The IP side knows this browser and sends it back with a token.
+    u = urlsplit(go)
+    r = on_ip.get(f"{u.path}?{u.query}", headers=ip)
+    back = urlsplit(r.headers["Location"])
+    assert back.netloc == f"{dev.mdns_host}:8080" and back.path == "/pair/accept"
+
+    accept = f"{back.path}?{back.query}"
+    r = on_local.get(accept, headers=local)
+    assert r.headers["Location"].endswith("/settings")
+    assert on_local.get("/settings", headers=local).status_code == 200
+
+    # Tokens are single-use.
+    stranger = web.test_client()
+    assert "/pair" in stranger.get(accept, headers=local).headers["Location"]
+    assert stranger.get("/settings", headers=local).status_code == 302
+
+    # A browser that isn't paired on the IP either just gets the code form, without looping.
+    r = stranger.get(f"{u.path}?{u.query}", headers=ip)
+    assert r.headers["Location"].startswith(f"http://{dev.mdns_host}:8080/pair?") and "h=0" in r.headers["Location"]
+    assert b"location.replace" not in stranger.get("/pair?next=/settings&h=0", headers=local).data
+
+    # Tokens are never sent to a host that isn't this device.
+    assert on_ip.get("/pair/handoff?next=/settings&back=evil.example", headers=ip).status_code == 400

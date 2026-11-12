@@ -16,6 +16,9 @@ from functools import wraps
 from typing import TYPE_CHECKING
 
 from flask import Flask, abort, redirect, render_template, request, send_file, session, url_for
+from itsdangerous import BadSignature, URLSafeTimedSerializer
+
+from ..device import local_ip
 
 from ..google import AuthError, ConfigError, auth_url, decode_state, encode_state, exchange_code, new_pkce
 from ..network import HOTSPOT_IP
@@ -27,6 +30,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 OAUTH_TTL = 15 * 60
+HANDOFF_TTL = 60
 
 
 def create_web(dev: "App") -> Flask:
@@ -46,6 +50,34 @@ def create_web(dev: "App") -> Flask:
                 return redirect(url_for("pair", next=request.path))
             return view(*a, **kw)
         return wrapper
+
+    def safe_next(nxt: str | None) -> str:
+        if not nxt or not nxt.startswith("/") or nxt.startswith("//"):
+            return url_for("index")
+        return nxt
+
+    # ------------------------------------------------------------------ pairing handoff
+    # A phone pairs on whichever address it used first (the panel's QR code uses the IP, since
+    # Android browsers often can't resolve .local). Cookies are per host, so opening
+    # <name>.local later looked like a brand-new browser. The pair page on one address checks
+    # that the device's other address is reachable from this phone, then makes a quick top-level
+    # round trip there. If the browser is paired there, it brings back a short-lived signed,
+    # single-use token and gets paired here too.
+    handoff = URLSafeTimedSerializer(web.secret_key, salt="pair-handoff")
+    used_handoffs: dict[str, float] = {}
+
+    def port_suffix() -> str:
+        return "" if dev.port == 80 else f":{dev.port}"
+
+    def own_hosts() -> set[str]:
+        return {h for h in (local_ip(), dev.mdns_host) if h}
+
+    def other_host() -> str | None:
+        here = (request.host or "").split(":")[0]
+        if here not in own_hosts() and here != dev.hostname:
+            return None
+        others = sorted(own_hosts() - {here}, key=lambda h: h.endswith(".local"))
+        return others[0] if others else None
 
     def page(template: str, **kw):
         return render_template(template, dev=dev, mode=dev.mode, paired=paired(),
@@ -105,9 +137,7 @@ def create_web(dev: "App") -> Flask:
     # ------------------------------------------------------------------ pairing
     @web.route("/pair", methods=["GET", "POST"])
     def pair():
-        nxt = request.values.get("next") or url_for("index")
-        if not nxt.startswith("/") or nxt.startswith("//"):
-            nxt = url_for("index")
+        nxt = safe_next(request.values.get("next"))
         if paired():
             return redirect(nxt)
         error = None
@@ -118,7 +148,43 @@ def create_web(dev: "App") -> Flask:
                 dev.post(dev.end_pairing)
                 return redirect(nxt)
             error = "That code doesn’t match the one on the screen."
-        return page("pair.html", next=nxt, error=error, showing=dev._pair_until > time.time())
+        try_other = None
+        other = other_host()
+        if other and request.method == "GET" and request.args.get("h") != "0" and dev.mode == "run":
+            try_other = {
+                "probe": f"http://{other}{port_suffix()}/healthz",
+                "go": f"http://{other}{port_suffix()}" + url_for("pair_handoff", next=nxt, back=request.host),
+            }
+        return page("pair.html", next=nxt, error=error, showing=dev._pair_until > time.time(),
+                    try_other=try_other)
+
+    @web.route("/pair/handoff")
+    def pair_handoff():
+        nxt = safe_next(request.args.get("next"))
+        back = request.args.get("back", "")
+        if back.split(":")[0] not in own_hosts() | {dev.hostname}:
+            abort(400)  # only ever hand a token to this device's own addresses
+        if not paired():
+            return redirect(f"http://{back}" + url_for("pair", next=nxt, h="0"))
+        token = handoff.dumps({"e": dev.settings.get("auth_epoch"), "n": secrets.token_urlsafe(12)})
+        return redirect(f"http://{back}" + url_for("pair_accept", t=token, next=nxt))
+
+    @web.route("/pair/accept")
+    def pair_accept():
+        nxt = safe_next(request.args.get("next"))
+        try:
+            data = handoff.loads(request.args.get("t", ""), max_age=HANDOFF_TTL)
+        except BadSignature:
+            return redirect(url_for("pair", next=nxt, h="0"))
+        now = time.time()
+        for k in [k for k, ts in used_handoffs.items() if now - ts > HANDOFF_TTL]:
+            used_handoffs.pop(k, None)
+        if data.get("n") in used_handoffs or data.get("e") != dev.settings.get("auth_epoch"):
+            return redirect(url_for("pair", next=nxt, h="0"))
+        used_handoffs[data["n"]] = now
+        session.permanent = True
+        session["epoch"] = dev.settings.get("auth_epoch")
+        return redirect(nxt)
 
     @web.route("/pair/show", methods=["POST"])
     def pair_show():
