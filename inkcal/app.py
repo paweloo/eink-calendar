@@ -433,9 +433,9 @@ class App:
 
     def on_linked(self) -> None:
         self.settings.update(calendars=None)
+        self.mode = RUN  # before the ~20 s panel refresh below, so the web UI sees it at once
         self.display.show(screens.ready(self.tokens.email, self.mdns_host, self.settings.get("device_name"),
                                         self.settings.get("theme")))
-        self.mode = RUN
         self.last_sync = None
         # Until this first sync works, retry every 30 s (not every 15 min) and keep the
         # "You're all set" screen up instead of drawing an empty calendar.

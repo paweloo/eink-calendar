@@ -68,11 +68,20 @@ def create_web(dev: "App") -> Flask:
         return resp
 
     # ------------------------------------------------------------------ routing by mode
+    def current_mode() -> str:
+        # /oauth/callback saves the Google sign-in right away, but the controller switches to
+        # "run" a moment later, on its own thread (after a ~20 s "You're all set" refresh).
+        # Treat that gap as "run", or "Open settings" would send the user back to Google.
+        if dev.mode == "link" and dev.linked:
+            return "run"
+        return dev.mode
+
     @web.route("/")
     def index():
-        if dev.mode == "setup":
+        mode = current_mode()
+        if mode == "setup":
             return redirect(url_for("wifi"))
-        if dev.mode == "link":
+        if mode == "link":
             return redirect(url_for("link"))
         return redirect(url_for("settings"))
 
@@ -121,6 +130,8 @@ def create_web(dev: "App") -> Flask:
     def link():
         if dev.mode == "setup":
             return redirect(url_for("wifi"))
+        if dev.mode == "link" and dev.linked:
+            return redirect(url_for("settings"))  # just linked, controller still catching up
         if dev.mode == "link" and not paired():
             error = None
             if request.method == "POST":
@@ -179,7 +190,7 @@ def create_web(dev: "App") -> Flask:
     @web.route("/settings", methods=["GET", "POST"])
     @need_pairing
     def settings():
-        if dev.mode != "run":
+        if current_mode() != "run":
             return redirect(url_for("index"))
         saved = False
         error = None
@@ -253,7 +264,7 @@ def create_web(dev: "App") -> Flask:
     @web.route("/screen.png")
     @need_pairing
     def screen():
-        if dev.mode != "run":
+        if current_mode() != "run":
             abort(404)
         # Live preview from the settings form: unsaved display options as query parameters.
         a, preview = request.args, {}

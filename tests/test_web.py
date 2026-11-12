@@ -104,3 +104,19 @@ def test_oauth_callback_rejects_unknown_state(device):
     c = create_web(device).test_client()
     r = c.get("/oauth/callback?code=x&state=bogus.aHR0cDovLzEwLjAuMC4x", headers={"Host": "10.42.0.1"})
     assert r.status_code == 400
+
+
+def test_settings_open_right_after_google_link(device):
+    """The sign-in is saved before the controller leaves "link" mode (it first spends ~20 s
+    drawing "You're all set"). Opening settings in that gap must not send the user to Google."""
+    dev = device
+    _drain(dev)
+    c = create_web(dev).test_client()
+    with c.session_transaction() as s:
+        s["epoch"] = dev.settings.get("auth_epoch")
+    dev.mode = "link"                                  # controller hasn't caught up yet
+    dev.tokens.save({"refresh_token": "r", "email": "me@example.com"})
+    assert c.get("/").headers["Location"].endswith("/settings")
+    assert c.get("/link").headers["Location"].endswith("/settings")
+    assert c.get("/settings").status_code == 200
+    assert c.get("/screen.png").status_code == 200
