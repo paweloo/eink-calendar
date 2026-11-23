@@ -24,10 +24,22 @@ headless Chrome at iPhone width (needs Google Chrome installed).
 
 ## Waitlist
 
-`app/actions.ts` → `joinWaitlist()` is a **stub**: it validates the email and logs it, nothing is stored.
-Wire it to a store (Vercel Postgres / Upstash) or an email service (Buttondown, Resend) before launch.
+The form posts straight from the browser to `NEXT_PUBLIC_WAITLIST_URL` (see `lib/waitlist.ts`): any endpoint
+that accepts a POSTed `email` field and answers JSON, such as a Formspree form (`https://formspree.io/f/<id>`).
+Unset, the form says signups aren't open yet and sends nothing.
 
-## Deploy on Vercel
+## Deploy (GitHub Pages)
 
-Import the repo, set **Root Directory** to `site`. Optionally, under Settings → Git → Ignored Build Step, use
-`git diff --quiet HEAD^ HEAD -- .` so pushes that only touch the device code don't rebuild the site.
+The site is a static export (`npm run build` → `out/`). `.github/workflows/site.yml` builds and publishes it on
+every push to `main` that touches `site/`.
+
+One-time setup on GitHub:
+1. Settings → Pages → Source: **GitHub Actions**.
+2. Settings → Secrets and variables → Actions → Variables: add `WAITLIST_URL`.
+
+It goes live at `https://<user>.github.io/eink-calendar/`. The base path comes from the Pages settings, so adding a
+custom domain later needs no code change. To try the Pages build locally:
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/eink-calendar npm run build   # then serve out/ under /eink-calendar/
+```

@@ -1,3 +1,5 @@
+import { asset } from "./asset";
+
 // Images in /public/screens are rendered by the device's own code: run scripts/site-screens.sh to refresh them.
 
 export const THEMES = [
@@ -16,6 +18,6 @@ export const VIEWS = [
 export type ThemeId = (typeof THEMES)[number]["id"];
 export type ViewId = (typeof VIEWS)[number]["id"];
 
-export const viewSrc = (view: ViewId, theme: ThemeId) => `/screens/view-${view}-${theme}.png`;
+export const viewSrc = (view: ViewId, theme: ThemeId) => asset(`/screens/view-${view}-${theme}.png`);
 export const screenSrc = (name: "welcome" | "link" | "ready" | "message", theme: ThemeId = "classic") =>
-  `/screens/screen-${name}-${theme}.png`;
+  asset(`/screens/screen-${name}-${theme}.png`);

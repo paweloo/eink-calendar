@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { joinWaitlist, type WaitlistState } from "@/app/actions";
+import { joinWaitlist, type WaitlistState } from "@/lib/waitlist";
 
 export function WaitlistForm({ id, tone = "light" }: { id: string; tone?: "light" | "dark" }) {
   const [state, action, pending] = useActionState<WaitlistState, FormData>(joinWaitlist, null);

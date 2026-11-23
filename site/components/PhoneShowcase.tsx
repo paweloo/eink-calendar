@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { asset } from "@/lib/asset";
 
 // Images in /public/phone are the device's own web pages: run scripts/site-phone-screens.py to refresh them.
 const PAGES = [
@@ -9,7 +10,7 @@ const PAGES = [
     label: "Pick your Wi-Fi",
     body: "Scan the code on the screen and this page opens by itself. Choose your home network and type its password.",
     url: "10.42.0.1",
-    src: "/phone/wifi.png",
+    src: asset("/phone/wifi.png"),
     h: 1653,
   },
   {
@@ -17,7 +18,7 @@ const PAGES = [
     label: "Prove you’re there",
     body: "Type the six-digit code from the calendar’s screen, then sign in to Google. The calendar can only read events, never change them.",
     url: "192.168.1.23",
-    src: "/phone/link.png",
+    src: asset("/phone/link.png"),
     h: 1303,
   },
   {
@@ -25,7 +26,7 @@ const PAGES = [
     label: "Tune it any time",
     body: "View, theme, week start, which calendars appear, how often to sync, quiet hours. A live preview shows exactly what the panel shows.",
     url: "calendar-7f3a.local",
-    src: "/phone/settings.png",
+    src: asset("/phone/settings.png"),
     h: 4345,
   },
 ] as const;
