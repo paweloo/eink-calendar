@@ -100,7 +100,10 @@ const FAQ = [
     "Do I need to install an app?",
     "No. Setup and settings both run in your phone’s browser. The calendar hosts its own little settings page on your Wi-Fi.",
   ],
-  ["Which calendars does it show?", "Google Calendar. You choose which of your calendars appear."],
+  [
+    "Which calendars does it show?",
+    "Google Calendar. You choose which of your calendars appear.",
+  ],
   [
     "What if I change my Wi-Fi?",
     "Change it from settings. If the calendar can’t join a network, it turns its setup Wi-Fi back on so you can pick again.",
@@ -111,13 +114,23 @@ const FAQ = [
   ],
 ];
 
-function SectionHead({ no, kicker, title }: { no: string; kicker: string; title: React.ReactNode }) {
+function SectionHead({
+  no,
+  kicker,
+  title,
+}: {
+  no: string;
+  kicker: string;
+  title: React.ReactNode;
+}) {
   return (
     <header className="mb-12 grid gap-4 md:grid-cols-[120px_1fr]">
       <div className="smallcaps text-red">§ {no}</div>
       <div>
         <div className="smallcaps mb-3 text-ink-faint">{kicker}</div>
-        <h2 className="press font-serif text-4xl leading-[1.05] tracking-tight text-balance md:text-5xl">{title}</h2>
+        <h2 className="press font-serif text-4xl leading-[1.05] tracking-tight text-balance md:text-5xl">
+          {title}
+        </h2>
       </div>
     </header>
   );
@@ -129,15 +142,19 @@ export default function Home() {
       {/* Masthead */}
       <div className="border-b border-rule">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2 sm:px-6">
-          <span className="smallcaps text-ink-faint">Vol. I · No. 1</span>
-          <span className="smallcaps hidden text-ink-faint sm:inline">Printed fresh, all day long</span>
+          <span className="smallcaps hidden text-ink-faint sm:inline">
+            Printed fresh, all day long
+          </span>
           <span className="smallcaps text-ink-faint">Est. 2026</span>
         </div>
       </div>
 
       <nav className="sticky top-0 z-40 border-b border-rule bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <a href="#" className="font-serif text-2xl font-semibold tracking-tight">
+          <a
+            href="#"
+            className="font-serif text-2xl font-semibold tracking-tight"
+          >
             InkCal<span className="text-red">.</span>
           </a>
           <div className="flex items-center gap-6">
@@ -164,33 +181,39 @@ export default function Home() {
       <header className="mx-auto max-w-6xl px-4 pt-14 pb-20 sm:px-6 md:pt-20">
         <div className="grid items-center gap-14 lg:grid-cols-[1fr_1.15fr]">
           <div>
-            <p className="smallcaps mb-6 text-red">A wall calendar that keeps itself current</p>
+            <p className="smallcaps mb-6 text-red">
+              A wall calendar that keeps itself current
+            </p>
             <h1 className="press font-serif text-[3.4rem] leading-[0.95] font-medium tracking-tight text-balance sm:text-7xl">
               Your days, <em className="font-normal">set in ink.</em>
             </h1>
             <p className="mt-7 max-w-md text-lg leading-relaxed text-ink-soft">
-              InkCal puts your Google Calendar on a 7.5-inch black, white and red e-paper display. No glow, no app, no
-              fiddling. Just your week on the wall, quietly up to date.
+              InkCal puts your Google Calendar on a 7.5-inch black, white and
+              red e-paper display. No glow, no app, no fiddling. Just your week
+              on the wall, quietly up to date.
             </p>
             <div className="mt-9">
               <WaitlistForm id="email-hero" />
             </div>
           </div>
           <div className="relative">
-            <div className="absolute -top-4 -right-3 z-10 hidden rotate-[7deg] rounded-full border-2 border-red bg-paper px-3 py-1 shadow-sm sm:block">
-              <span className="smallcaps text-red">Real screens</span>
-            </div>
             <HeroDevice />
           </div>
         </div>
       </header>
 
       {/* Strip */}
-      <div className="double-rule border-b border-ink bg-ink text-paper" aria-hidden>
+      <div
+        className="double-rule border-b border-ink bg-ink text-paper"
+        aria-hidden
+      >
         <div className="overflow-hidden py-3">
           <div className="marquee">
             {[...STRIP, ...STRIP].map((s, i) => (
-              <span key={i} className="flex items-center font-serif text-lg italic">
+              <span
+                key={i}
+                className="flex items-center font-serif text-lg italic"
+              >
                 <span className="px-6">{s}</span>
                 <span className="text-red not-italic">✦</span>
               </span>
@@ -201,13 +224,19 @@ export default function Home() {
 
       <main>
         {/* Demo */}
-        <section id="demo" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24 sm:px-6">
+        <section
+          id="demo"
+          className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24 sm:px-6"
+        >
           <SectionHead
             no="I"
             kicker="Try it"
             title={
               <>
-                Turn the dials. <em className="font-normal text-ink-soft">Watch the ink settle.</em>
+                Turn the dials.{" "}
+                <em className="font-normal text-ink-soft">
+                  Watch the ink settle.
+                </em>
               </>
             }
           />
@@ -215,15 +244,31 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section id="features" className="scroll-mt-20 border-y border-rule bg-paper-deep/60">
+        <section
+          id="features"
+          className="scroll-mt-20 border-y border-rule bg-paper-deep/60"
+        >
           <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-            <SectionHead no="II" kicker="The almanac" title="Small things, done properly." />
+            <SectionHead
+              no="II"
+              kicker="The almanac"
+              title="Small things, done properly."
+            />
             <div className="grid border-t border-l border-rule sm:grid-cols-2 lg:grid-cols-4">
               {FEATURES.map((f, i) => (
-                <article key={f.title} className="border-r border-b border-rule p-6">
-                  <div className="mb-6 font-serif text-3xl text-red tabular-nums">{String(i + 1).padStart(2, "0")}</div>
-                  <h3 className="mb-2 font-serif text-xl font-medium">{f.title}</h3>
-                  <p className="text-sm leading-relaxed text-ink-soft">{f.body}</p>
+                <article
+                  key={f.title}
+                  className="border-r border-b border-rule p-6"
+                >
+                  <div className="mb-6 font-serif text-3xl text-red tabular-nums">
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <h3 className="mb-2 font-serif text-xl font-medium">
+                    {f.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-ink-soft">
+                    {f.body}
+                  </p>
                 </article>
               ))}
             </div>
@@ -231,13 +276,17 @@ export default function Home() {
         </section>
 
         {/* Setup */}
-        <section id="setup" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24 sm:px-6">
+        <section
+          id="setup"
+          className="mx-auto max-w-6xl scroll-mt-20 px-4 py-24 sm:px-6"
+        >
           <SectionHead
             no="III"
             kicker="Setup"
             title={
               <>
-                Out of the box and onto the wall. <em className="font-normal">No keyboard required.</em>
+                Out of the box and onto the wall.{" "}
+                <em className="font-normal">No keyboard required.</em>
               </>
             }
           />
@@ -246,10 +295,16 @@ export default function Home() {
               <li key={s.n}>
                 <Device src={s.src} alt={s.alt} compact />
                 <div className="mt-6 flex gap-4">
-                  <span className="font-serif text-3xl text-red italic">{s.n}.</span>
+                  <span className="font-serif text-3xl text-red italic">
+                    {s.n}.
+                  </span>
                   <div>
-                    <h3 className="font-serif text-xl font-medium">{s.title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-soft">{s.body}</p>
+                    <h3 className="font-serif text-xl font-medium">
+                      {s.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+                      {s.body}
+                    </p>
                   </div>
                 </div>
               </li>
@@ -258,14 +313,18 @@ export default function Home() {
         </section>
 
         {/* Phone */}
-        <section id="phone" className="scroll-mt-20 border-t border-rule bg-paper-deep/60">
+        <section
+          id="phone"
+          className="scroll-mt-20 border-t border-rule bg-paper-deep/60"
+        >
           <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
             <SectionHead
               no="IV"
               kicker="On your phone"
               title={
                 <>
-                  The remote is <em className="font-normal">the phone in your pocket.</em>
+                  The remote is{" "}
+                  <em className="font-normal">the phone in your pocket.</em>
                 </>
               }
             />
@@ -277,27 +336,45 @@ export default function Home() {
         <section id="specs" className="scroll-mt-20 border-t border-rule">
           <div className="mx-auto grid max-w-6xl gap-16 px-4 py-24 sm:px-6 lg:grid-cols-2">
             <div>
-              <SectionHead no="V" kicker="Specifications" title="The fine print." />
+              <SectionHead
+                no="V"
+                kicker="Specifications"
+                title="The fine print."
+              />
               <dl className="double-rule">
                 {SPECS.map(([k, v]) => (
-                  <div key={k} className="flex items-baseline gap-3 border-b border-rule py-3 text-sm">
+                  <div
+                    key={k}
+                    className="flex items-baseline gap-3 border-b border-rule py-3 text-sm"
+                  >
                     <dt className="smallcaps shrink-0 text-ink-faint">{k}</dt>
-                    <span className="mb-1 flex-1 border-b border-dotted border-ink-faint/60" aria-hidden />
+                    <span
+                      className="mb-1 flex-1 border-b border-dotted border-ink-faint/60"
+                      aria-hidden
+                    />
                     <dd className="text-right">{v}</dd>
                   </div>
                 ))}
               </dl>
             </div>
             <div>
-              <SectionHead no="VI" kicker="Questions" title="Asked & answered." />
+              <SectionHead
+                no="VI"
+                kicker="Questions"
+                title="Asked & answered."
+              />
               <div className="double-rule">
                 {FAQ.map(([q, a]) => (
                   <details key={q} className="group border-b border-rule py-4">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg">
                       {q}
-                      <span className="text-red transition-transform group-open:rotate-45">+</span>
+                      <span className="text-red transition-transform group-open:rotate-45">
+                        +
+                      </span>
                     </summary>
-                    <p className="mt-2 text-sm leading-relaxed text-ink-soft">{a}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                      {a}
+                    </p>
                   </details>
                 ))}
               </div>
@@ -310,10 +387,12 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
             <p className="smallcaps mb-6 text-red">The waitlist</p>
             <h2 className="mx-auto max-w-3xl font-serif text-5xl leading-[1.02] tracking-tight text-balance md:text-6xl">
-              Be first to hang one <em className="font-normal">on your wall.</em>
+              Be first to hang one{" "}
+              <em className="font-normal">on your wall.</em>
             </h2>
             <p className="mx-auto mt-6 max-w-lg text-paper/70">
-              InkCal isn’t on sale yet. Leave your email and we’ll write once, when it is.
+              InkCal isn’t on sale yet. Leave your email and we’ll write once,
+              when it is.
             </p>
             <div className="mt-10 flex justify-center">
               <WaitlistForm id="email-footer" tone="dark" />
@@ -327,7 +406,9 @@ export default function Home() {
           <span className="font-serif text-lg text-ink">
             InkCal<span className="text-red">.</span>
           </span>
-          <span>Every screen on this page was drawn by the calendar’s own software.</span>
+          <span>
+            Every screen on this page was drawn by the calendar’s own software.
+          </span>
         </div>
       </footer>
     </div>
